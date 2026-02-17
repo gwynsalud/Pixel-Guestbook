@@ -4,38 +4,35 @@ import axios from 'axios';
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 const API = `${API_BASE}/guestbook`;
 
-// --- RPG GOLD & BLUE PALETTE ---
+// --- CLASSIC RPG COLORS (SNES BLUE THEME) ---
 const COLORS = {
-  bg: '#0a0a0f',       // Void Black
-  surface: '#121225',  // Deep Blue Panel
-  border: '#c5a059',   // Antique Gold
-  text: '#fdfdfd',     // Parchment White
-  accent: '#7b61ff',   // Magic Purple
-  success: '#50fa7b',  // Level Up Green
-  error: '#ff5555'     // HP Low Red
+  bg: '#050505',       // Pure black backdrop
+  windowBg: 'linear-gradient(180deg, #0000aa 0%, #000044 100%)', // Classic RPG Blue
+  border: '#e7e7e7',   // Silver/White border
+  gold: '#ffcc00',     // UI Highlight
+  text: '#ffffff',
+  error: '#ff4444'
 };
 
-const rpgContainer = {
-  width: '100%',
-  border: `4px double ${COLORS.border}`,
-  backgroundColor: COLORS.surface,
-  boxShadow: `inset 0 0 15px rgba(0,0,0,0.5), 0 10px 20px rgba(0,0,0,0.8)`,
-  padding: '30px',
-  boxSizing: 'border-box',
-  marginBottom: '40px'
+const windowStyle = {
+  background: COLORS.windowBg,
+  border: `4px solid ${COLORS.border}`,
+  borderRadius: '8px',
+  boxShadow: '0 0 0 2px #000, 4px 4px 0px rgba(0,0,0,0.5)',
+  padding: '20px',
+  color: COLORS.text,
+  imageRendering: 'pixelated'
 };
 
-const rpgInput = {
+const inputStyle = {
   width: '100%',
-  padding: '15px',
+  padding: '10px',
   fontFamily: '"Courier New", Courier, monospace',
-  backgroundColor: '#05050a',
-  color: '#fff',
-  border: `2px solid ${COLORS.border}`,
+  backgroundColor: 'rgba(0,0,0,0.3)',
+  color: COLORS.gold,
+  border: `1px solid ${COLORS.border}`,
   outline: 'none',
-  boxSizing: 'border-box',
-  marginBottom: '10px',
-  fontSize: '1rem'
+  boxSizing: 'border-box'
 };
 
 function App() {
@@ -46,17 +43,13 @@ function App() {
   const [editingId, setEditingId] = useState(null);
   const [editValue, setEditValue] = useState("");
   const [status, setStatus] = useState({ msg: '', type: '' });
-  const [deleteConfirm, setDeleteConfirm] = useState(null);
 
-  const MAX_CHAR = 150;
-
-  const load = () => axios.get(API).then(res => setEntries(res.data)).catch(() => showMsg("SYSTEM: CONNECTION TO REALM SEVERED", "error"));
-  
+  const load = () => axios.get(API).then(res => setEntries(res.data)).catch(() => showMsg("CONNECTION ERROR", "error"));
   useEffect(() => { load(); }, []);
 
   const showMsg = (msg, type = 'success') => {
     setStatus({ msg: msg.toUpperCase(), type });
-    setTimeout(() => setStatus({ msg: '', type: '' }), 4000);
+    setTimeout(() => setStatus({ msg: '', type: '' }), 3000);
   };
 
   const handleAuth = async (type) => {
@@ -65,139 +58,102 @@ function App() {
       if (type === 'login') {
         localStorage.setItem('pixel_user', JSON.stringify(res.data));
         setUser(res.data);
-        showMsg(`HERO ${res.data.username} HAS JOINED THE PARTY`);
+        showMsg("PARTY MEMBER JOINED");
       } else {
-        showMsg("NEW JOURNEY REGISTERED. PROCEED TO LOGIN.");
+        showMsg("NEW HERO REGISTERED");
       }
-    } catch (err) { 
-      showMsg(err.response?.data?.message || "QUEST DENIED", "error"); 
-    }
-  };
-
-  const logout = () => {
-    localStorage.removeItem('pixel_user');
-    setUser(null);
-    showMsg("HERO HAS LEFT THE REALM.");
+    } catch (err) { showMsg("ACTION FAILED", "error"); }
   };
 
   const submitPost = async (e) => {
     e.preventDefault();
-    if (postForm.message.length > MAX_CHAR) return showMsg("SCROLL IS TOO SHORT FOR THIS TALE!", "error");
-    try {
-      await axios.post(API, { ...postForm, author_username: user.username });
-      setPostForm({ name: '', message: '' });
-      showMsg("YOUR LEGEND HAS BEEN RECORDED.");
-      load();
-    } catch (err) { showMsg("MAGIC MISFIRE: POST FAILED", "error"); }
+    await axios.post(API, { ...postForm, author_username: user.username });
+    setPostForm({ name: '', message: '' });
+    showMsg("LOG UPDATED");
+    load();
   };
 
   return (
     <div style={{ 
       backgroundColor: COLORS.bg, 
-      color: COLORS.text, 
       minHeight: '100vh', 
       width: '100%', 
       fontFamily: '"Courier New", Courier, monospace',
-      display: 'flex',
-      flexDirection: 'column',
-      alignItems: 'center',
-      padding: '50px 0',
-      margin: 0
+      padding: '20px',
+      boxSizing: 'border-box'
     }}>
       
-      {/* RPG HEADER & GLOBAL COUNTER */}
-      <div style={{ textAlign: 'center', marginBottom: '60px' }}>
-        <h1 style={{ fontSize: '4rem', color: COLORS.border, textShadow: '0 0 10px #c5a059', margin: 0, letterSpacing: '8px' }}>
+      {/* HEADER SECTION */}
+      <div style={{ textAlign: 'center', marginBottom: '30px' }}>
+        <h1 style={{ color: COLORS.text, fontSize: '3rem', margin: 0, textShadow: '4px 4px #000' }}>
           THE PIXEL ARCHIVES
         </h1>
-        <div style={{ marginTop: '10px', fontSize: '1.2rem', color: COLORS.accent }}>
-          [ GLOBAL QUESTS COMPLETED: {entries.length} ]
-        </div>
+        <p style={{ color: COLORS.gold }}>[ TOTAL QUESTS: {entries.length} ]</p>
       </div>
 
-      {/* NOTIFICATION BOX (RPG POPUP STYLE) */}
-      {status.msg && (
-        <div style={{ 
-          position: 'fixed', bottom: '40px', left: '50%', transform: 'translateX(-50%)',
-          zIndex: 1000, width: '400px', backgroundColor: '#000', border: `3px solid ${COLORS.border}`,
-          padding: '15px', textAlign: 'center', boxShadow: '0 0 20px #000'
-        }}>
-          <span style={{ color: status.type === 'error' ? COLORS.error : COLORS.success }}>▶ {status.msg}</span>
-        </div>
-      )}
+      {/* TOP NOTIFICATION AREA */}
+      <div style={{ height: '40px', textAlign: 'center', marginBottom: '20px' }}>
+        {status.msg && (
+          <span style={{ 
+            background: COLORS.windowBg, 
+            padding: '10px 40px', 
+            border: `2px solid ${COLORS.border}`,
+            color: status.type === 'error' ? COLORS.error : COLORS.gold
+          }}>
+            {status.msg}
+          </span>
+        )}
+      </div>
 
-      <div style={{ width: '90%', maxWidth: '1100px' }}>
+      {/* MAIN LAYOUT GRID */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 3fr', gap: '20px' }}>
         
-        {/* PLAYER COMMAND CENTER */}
-        <div style={rpgContainer}>
-          {!user ? (
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '40px', justifyContent: 'center' }}>
-              <div style={{ flex: '1', minWidth: '300px' }}>
-                <h2 style={{ borderBottom: `2px solid ${COLORS.border}`, paddingBottom: '10px' }}>IDENTIFY TRAVELLER</h2>
-                <input placeholder="USERNAME" style={rpgInput} onChange={e => setAuthForm({...authForm, username: e.target.value})} />
-                <input placeholder="PASSWORD" type="password" style={rpgInput} onChange={e => setAuthForm({...authForm, password: e.target.value})} />
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', gap: '15px' }}>
-                <button style={{ ...rpgInput, cursor: 'pointer', backgroundColor: COLORS.border, color: '#000', border: 'none', fontWeight: 'bold' }} onClick={() => handleAuth('login')}>ENTER WORLD</button>
-                <button style={{ ...rpgInput, cursor: 'pointer', backgroundColor: 'transparent', color: COLORS.border }} onClick={() => handleAuth('register')}>NEW GAME</button>
-              </div>
-            </div>
-          ) : (
-            <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '30px', color: COLORS.accent }}>
-                <span>[ CURRENT HERO: {user.username.toUpperCase()} ]</span>
-                <button onClick={logout} style={{ background: 'none', border: 'none', color: COLORS.error, cursor: 'pointer', fontSize: '0.9rem' }}>LOGOUT</button>
-              </div>
-              <form onSubmit={submitPost}>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '20px' }}>
-                  <input placeholder="TITLE / NAME" style={rpgInput} value={postForm.name} onChange={e => setPostForm({...postForm, name: e.target.value})} required />
-                  <div style={{ position: 'relative' }}>
-                    <textarea 
-                      placeholder="LEAVE A MESSAGE IN THE ARCHIVES..." 
-                      style={{ ...rpgInput, height: '52px', resize: 'none' }} 
-                      value={postForm.message} 
-                      onChange={e => setPostForm({...postForm, message: e.target.value})} 
-                      required 
-                    />
-                    <div style={{ position: 'absolute', right: '10px', bottom: '20px', fontSize: '0.7rem' }}>
-                      {postForm.message.length}/{MAX_CHAR}
-                    </div>
-                  </div>
-                </div>
-                <button type="submit" style={{ ...rpgInput, width: '100%', backgroundColor: COLORS.surface, border: `2px solid ${COLORS.border}`, cursor: 'pointer', color: COLORS.border, marginTop: '10px' }}>
-                  RECORD LEGEND
-                </button>
-              </form>
-            </div>
-          )}
-        </div>
+        {/* LEFT SIDE: COMMAND MENU */}
+        <aside>
+          <div style={windowStyle}>
+            {!user ? (
+              <>
+                <h3 style={{ borderBottom: `2px solid ${COLORS.border}`, paddingBottom: '5px' }}>COMMAND</h3>
+                <label style={{ fontSize: '0.8rem' }}>NAME:</label>
+                <input style={inputStyle} onChange={e => setAuthForm({...authForm, username: e.target.value})} />
+                <label style={{ fontSize: '0.8rem' }}>PASS:</label>
+                <input type="password" style={inputStyle} onChange={e => setAuthForm({...authForm, password: e.target.value})} />
+                <button style={{ ...inputStyle, cursor: 'pointer', marginTop: '10px', background: COLORS.border, color: '#000' }} onClick={() => handleAuth('login')}>▶ LOGIN</button>
+                <button style={{ ...inputStyle, cursor: 'pointer', marginTop: '5px', background: 'none' }} onClick={() => handleAuth('register')}>▶ NEW GAME</button>
+              </>
+            ) : (
+              <>
+                <h3 style={{ borderBottom: `2px solid ${COLORS.border}` }}>STATUS</h3>
+                <p style={{ color: COLORS.gold }}>HERO: {user.username}</p>
+                <form onSubmit={submitPost}>
+                   <input placeholder="TITLE" style={rpgInput} value={postForm.name} onChange={e => setPostForm({...postForm, name: e.target.value})} required />
+                   <textarea placeholder="MESSAGE" style={{...inputStyle, height: '80px', marginTop: '10px'}} value={postForm.message} onChange={e => setPostForm({...postForm, message: e.target.value})} required />
+                   <button type="submit" style={{ ...inputStyle, cursor: 'pointer', marginTop: '10px', background: COLORS.gold, color: '#000' }}>▶ POST</button>
+                </form>
+                <button onClick={() => { localStorage.clear(); window.location.reload(); }} style={{ background: 'none', border: 'none', color: COLORS.error, cursor: 'pointer', marginTop: '20px' }}>[ RESET ]</button>
+              </>
+            )}
+          </div>
+        </aside>
 
-        {/* THE ANCIENT WALL (Grid) */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '25px' }}>
+        {/* RIGHT SIDE: THE WALL (FULL WIDTH GRID) */}
+        <main style={{ 
+          display: 'grid', 
+          gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', 
+          gap: '20px',
+          alignContent: 'start'
+        }}>
           {entries.map(e => (
-            <div key={e.id} style={{ ...rpgContainer, padding: '20px', marginBottom: 0 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: `1px solid ${COLORS.border}`, paddingBottom: '10px', opacity: 0.8 }}>
-                <span style={{ color: COLORS.accent, fontWeight: 'bold' }}>{e.name.toUpperCase()}</span>
-                <span style={{ fontSize: '0.6rem' }}>LVL. {e.author_username}</span>
+            <div key={e.id} style={{ ...windowStyle, padding: '15px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.7rem', color: COLORS.gold, marginBottom: '10px' }}>
+                <span>{e.name.toUpperCase()}</span>
+                <span>@{e.author_username}</span>
               </div>
-              
-              <div style={{ padding: '20px 0', minHeight: '80px', fontSize: '1.1rem' }}>
-                {editingId === e.id ? (
-                  <textarea style={{ ...rpgInput, height: '70px' }} value={editValue} onChange={e => setEditValue(e.target.value)} />
-                ) : (
-                  <p style={{ margin: 0, fontStyle: 'italic' }}>"{e.message}"</p>
-                )}
-              </div>
-
-              {user?.username === e.author_username && (
-                <div style={{ display: 'flex', gap: '15px', fontSize: '0.7rem', borderTop: `1px solid ${COLORS.border}`, paddingTop: '10px' }}>
-                    <button onClick={() => { setEditingId(e.id); setEditValue(e.message); }} style={{ color: COLORS.text, background: 'none', border: 'none', cursor: 'pointer' }}>[ ALTER ]</button>
-                    <button onClick={() => setDeleteConfirm(e.id)} style={{ color: COLORS.error, background: 'none', border: 'none', cursor: 'pointer' }}>[ BANISH ]</button>
-                </div>
-              )}
+              <p style={{ margin: 0, lineHeight: '1.4' }}>"{e.message}"</p>
             </div>
           ))}
-        </div>
+        </main>
+
       </div>
     </div>
   );
