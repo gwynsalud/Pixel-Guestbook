@@ -21,35 +21,52 @@ function App() {
   const [postForm, setPostForm] = useState({ name: '', message: '', category: 'freedom' });
   const [filter, setFilter] = useState('all');
   const [revealedIds, setRevealedIds] = useState([]);
-  const [status, setStatus] = useState({ msg: '', type: '' });
+  
+  // System Log for Validation Feedback
+  const [status, setStatus] = useState({ msg: 'READY TO PLAY', type: 'system' });
 
-  const load = () => axios.get(API).then(res => setEntries(res.data)).catch(() => showMsg("DECK DISCONNECTED", "error"));
+  const load = () => axios.get(API)
+    .then(res => setEntries(res.data))
+    .catch(() => showMsg("DECK DISCONNECTED", "error"));
+
   useEffect(() => { load(); }, []);
 
   const showMsg = (msg, type = 'success') => {
     setStatus({ msg: msg.toUpperCase(), type });
-    setTimeout(() => setStatus({ msg: '', type: '' }), 3000);
+    // Reset status to neutral after 4 seconds
+    setTimeout(() => setStatus({ msg: 'WAITING FOR MOVE...', type: 'system' }), 4000);
   };
 
   const handleAuth = async (type) => {
+    if (!authForm.username || !authForm.password) {
+      return showMsg("NAME AND KEY REQUIRED", "error");
+    }
+
     try {
       const res = await axios.post(`${API}/${type}`, authForm);
       if (type === 'login') {
         localStorage.setItem('pixel_user', JSON.stringify(res.data));
         setUser(res.data);
-        showMsg("PLAYER JOINED TABLE");
+        showMsg("ACCESS GRANTED: WELCOME HERO");
       } else {
-        showMsg("NEW PROFILE FORGED");
+        showMsg("ACCOUNT FORGED! YOU MAY LOGIN");
       }
-    } catch (err) { showMsg("INVALID MANA / PASSWORD", "error"); }
+    } catch (err) { 
+      const errorText = err.response?.data?.message || "INVALID CREDENTIALS";
+      showMsg(errorText, "error"); 
+    }
   };
 
   const submitPost = async (e) => {
     e.preventDefault();
-    await axios.post(API, { ...postForm, author_username: user.username });
-    setPostForm({ name: '', message: '', category: 'freedom' });
-    showMsg("CARD PLAYED");
-    load();
+    try {
+      await axios.post(API, { ...postForm, author_username: user.username });
+      setPostForm({ name: '', message: '', category: 'freedom' });
+      showMsg("CARD PLAYED TO BOARD");
+      load();
+    } catch (err) {
+      showMsg("MAGIC MISFIRE: POST FAILED", "error");
+    }
   };
 
   const toggleFlip = (id) => {
@@ -69,13 +86,22 @@ function App() {
     position: 'relative'
   };
 
+  const inputStyles = {
+    padding: '10px', 
+    border: `2px solid #5d4037`, 
+    background: 'rgba(255,255,255,0.6)',
+    fontFamily: 'monospace', 
+    outline: 'none', 
+    fontWeight: 'bold'
+  };
+
   return (
     <div style={{ backgroundColor: THEME.board, minHeight: '100vh', width: '100vw', padding: '40px 0', color: '#fff', fontFamily: 'monospace' }}>
       
       <style>{`
         @keyframes float { 0% { transform: translateY(0px); } 50% { transform: translateY(-10px); } 100% { transform: translateY(0px); } }
-        .pixel-card { animation: float 4s ease-in-out infinite; }
-        .pixel-card:hover { animation-play-state: paused; }
+        .pixel-card { animation: float 4s ease-in-out infinite; transition: all 0.3s ease; }
+        .pixel-card:hover { animation-play-state: paused; transform: scale(1.02); }
       `}</style>
 
       {/* HEADER */}
@@ -96,25 +122,44 @@ function App() {
         
         {/* PLAYER ACTION PANEL */}
         <div style={{ ...cardStyle, maxWidth: '600px', margin: '0 auto 50px auto' }}>
+          
+          {/* SYSTEM DIALOGUE LOG (Validation Feedback) */}
+          <div style={{ 
+            backgroundColor: '#000', 
+            padding: '10px', 
+            marginBottom: '15px', 
+            border: `2px solid ${THEME.cardBorder}`,
+            textAlign: 'center',
+            fontSize: '0.9rem',
+            minHeight: '20px'
+          }}>
+            <span style={{ 
+              color: status.type === 'error' ? '#ff4444' : status.type === 'success' ? '#44ff44' : THEME.quest 
+            }}>
+              {`> ${status.msg}`}
+            </span>
+          </div>
+
           {!user ? (
             <div style={{ textAlign: 'center' }}>
               <h3 style={{ margin: '0 0 15px 0' }}>IDENTIFY PLAYER</h3>
               <input placeholder="USERNAME" style={inputStyles} onChange={e => setAuthForm({...authForm, username: e.target.value})} />
+              <div style={{ height: '10px' }} />
               <input type="password" placeholder="PASSWORD" style={inputStyles} onChange={e => setAuthForm({...authForm, password: e.target.value})} />
-              <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
+              <div style={{ display: 'flex', gap: '10px', marginTop: '15px' }}>
                 <button style={{ ...inputStyles, background: THEME.quest, flex: 1, cursor: 'pointer' }} onClick={() => handleAuth('login')}>LOGIN</button>
-                <button style={{ ...inputStyles, background: 'none', flex: 1, cursor: 'pointer' }} onClick={() => handleAuth('register')}>NEW PLAYER</button>
+                <button style={{ ...inputStyles, background: 'none', flex: 1, cursor: 'pointer' }} onClick={() => handleAuth('register')}>REGISTER</button>
               </div>
             </div>
           ) : (
             <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: `2px solid ${THEME.cardBorder}`, marginBottom: '15px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: `2px solid ${THEME.cardBorder}`, paddingBottom: '5px', marginBottom: '15px' }}>
                 <strong>PLAYER: {user.username}</strong>
-                <button onClick={() => { localStorage.clear(); setUser(null); }} style={{ background: 'none', border: 'none', color: '#d32f2f', cursor: 'pointer', fontSize: '10px' }}>[ EXIT ]</button>
+                <button onClick={() => { localStorage.clear(); setUser(null); showMsg("PLAYER DISCONNECTED", "system"); }} style={{ background: 'none', border: 'none', color: '#d32f2f', cursor: 'pointer', fontSize: '10px', fontWeight: 'bold' }}>[ FORFEIT ]</button>
               </div>
               <form onSubmit={submitPost} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                 <input placeholder="CARD NAME" style={inputStyles} value={postForm.name} onChange={e => setPostForm({...postForm, name: e.target.value})} required />
-                <textarea placeholder="MESSAGE OR FORTUNE..." style={{ ...inputStyles, height: '60px' }} value={postForm.message} onChange={e => setPostForm({...postForm, message: e.target.value})} required />
+                <textarea placeholder="MESSAGE OR FORTUNE..." style={{ ...inputStyles, height: '60px', resize: 'none' }} value={postForm.message} onChange={e => setPostForm({...postForm, message: e.target.value})} required />
                 <select style={inputStyles} value={postForm.category} onChange={e => setPostForm({...postForm, category: e.target.value})}>
                   <option value="freedom">CLASS: FREEDOM</option>
                   <option value="quest">CLASS: QUEST</option>
@@ -126,11 +171,13 @@ function App() {
           )}
         </div>
 
-        {/* BATTLEFIELD */}
+        {/* BATTLEFIELD GRID */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '30px' }}>
           {filteredEntries.map(e => {
             const isOracle = e.category === 'bounty' || e.category === 'oracle';
             const isRevealed = revealedIds.includes(e.id);
+            const cardColor = THEME[e.category === 'bounty' ? 'oracle' : e.category] || THEME.quest;
+
             return (
               <div key={e.id} className="pixel-card" onClick={() => isOracle && toggleFlip(e.id)} style={{ 
                 ...cardStyle, minHeight: '220px', cursor: isOracle ? 'pointer' : 'default',
@@ -140,18 +187,20 @@ function App() {
                 display: 'flex', flexDirection: 'column'
               }}>
                 {isOracle && !isRevealed ? (
+                  /* CARD BACK (ORACLE) */
                   <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-                    <div style={{ fontSize: '3rem' }}>🔮</div>
-                    <div style={{ fontSize: '0.8rem', color: THEME.oracle }}>DRAW TO REVEAL</div>
+                    <div style={{ fontSize: '3.5rem', marginBottom: '10px' }}>🔮</div>
+                    <div style={{ fontSize: '0.7rem', color: THEME.oracle, letterSpacing: '1px' }}>CLICK TO DRAW</div>
                   </div>
                 ) : (
+                  /* CARD FRONT */
                   <>
-                    <div style={{ position: 'absolute', top: '10px', right: '10px', width: '15px', height: '15px', borderRadius: '50%', background: THEME[e.category === 'bounty' ? 'oracle' : e.category] }} />
+                    <div style={{ position: 'absolute', top: '10px', right: '10px', width: '15px', height: '15px', borderRadius: '50%', background: cardColor, border: `2px solid ${THEME.cardBorder}` }} />
                     <div style={{ borderBottom: `2px solid ${THEME.cardBorder}`, paddingBottom: '5px' }}>
-                      <strong style={{ fontSize: '1.1rem' }}>{e.name}</strong>
+                      <strong style={{ fontSize: '1.1rem', textTransform: 'uppercase' }}>{e.name}</strong>
                     </div>
-                    <p style={{ fontStyle: 'italic', margin: '15px 0', flex: 1 }}>"{e.message}"</p>
-                    <div style={{ fontSize: '0.7rem', textAlign: 'right', fontWeight: 'bold' }}>
+                    <p style={{ fontStyle: 'italic', margin: '15px 0', flex: 1, fontSize: '0.95rem', lineHeight: '1.4' }}>"{e.message}"</p>
+                    <div style={{ fontSize: '0.7rem', textAlign: 'right', fontWeight: 'bold', color: isOracle ? THEME.oracle : 'inherit' }}>
                       {isOracle ? '— THE VOID —' : `@${e.author_username}`}
                     </div>
                   </>
@@ -164,10 +213,5 @@ function App() {
     </div>
   );
 }
-
-const inputStyles = {
-  padding: '10px', border: `2px solid #5d4037`, background: 'rgba(255,255,255,0.6)',
-  fontFamily: 'monospace', outline: 'none', fontWeight: 'bold'
-};
 
 export default App;
