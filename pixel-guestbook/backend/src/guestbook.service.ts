@@ -1,9 +1,11 @@
 import { Injectable, OnModuleInit, UnauthorizedException, ConflictException } from '@nestjs/common';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import * as bcrypt from 'bcrypt';
 
 @Injectable()
 export class GuestbookService implements OnModuleInit {
   private supabase: SupabaseClient;
+  private readonly saltRounds = 10; // The complexity of the hash
 
   onModuleInit() {
     this.supabase = createClient(
@@ -12,31 +14,7 @@ export class GuestbookService implements OnModuleInit {
     );
   }
 
-  // --- AUTH METHODS ---
-
-  async register(dto: any) {
-    const { data, error } = await this.supabase
-      .from('profiles')
-      .insert([{ username: dto.username, password: dto.password }]); // Simple text for now
-    
-    if (error?.code === '23505') throw new ConflictException('Username taken');
-    return { message: 'Registered successfully' };
-  }
-
-  async login(dto: any) {
-    const { data: user } = await this.supabase
-      .from('profiles')
-      .select('*')
-      .eq('username', dto.username)
-      .eq('password', dto.password)
-      .single();
-
-    if (!user) throw new UnauthorizedException('Invalid credentials');
-    return { username: user.username }; // Send this back to React
-  }
-
-  // --- GUESTBOOK METHODS ---
-
+  // GET: Fetch all entries
   async findAll() {
     const { data } = await this.supabase
       .from('guestbook')
@@ -50,24 +28,35 @@ export class GuestbookService implements OnModuleInit {
     return await this.supabase.from('guestbook').insert([dto]);
   }
 
-  async update(id: string, username: string, dto: any) {
-    // Only update if the id matches AND the author matches
-    const { data, error } = await this.supabase
+  // PUT: Update message only if PIN matches
+  async update(id: string, pin: string, dto: any) {
+    const { data: entry } = await this.supabase
+      .from('guestbook')
+      .select('secret_pin')
+      .eq('id', id)
+      .single();
+
+    if (!entry || entry.secret_pin !== pin) {
+      throw new UnauthorizedException('Invalid PIN - Update denied');
+    }
+
+    return await this.supabase
       .from('guestbook')
       .update({ message: dto.message })
-      .match({ id: id, author_username: username });
-
-    if (error || !data) throw new UnauthorizedException('Ownership mismatch');
-    return data;
+      .eq('id', id);
   }
 
-  async delete(id: string, username: string) {
-    const { data, error } = await this.supabase
+  // DELETE: Remove entry only if PIN matches
+  async delete(id: string, pin: string) {
+    const { data: entry } = await this.supabase
       .from('guestbook')
       .delete()
       .match({ id: id, author_username: username });
 
-    if (error) throw new UnauthorizedException('Ownership mismatch');
-    return { deleted: true };
+    if (!entry || entry.secret_pin !== pin) {
+      throw new UnauthorizedException('Invalid PIN - Delete denied');
+    }
+
+    return await this.supabase.from('guestbook').delete().eq('id', id);
   }
 }
