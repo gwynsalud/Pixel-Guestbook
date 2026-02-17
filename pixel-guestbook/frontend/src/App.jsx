@@ -1,35 +1,47 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+import { useEffect, useState } from 'react';
+import axios from 'axios';
+
+const API = 'http://localhost:3000/guestbook';
 
 function App() {
-  const [count, setCount] = useState(0)
+  const [entries, setEntries] = useState([]);
+  const [form, setForm] = useState({ name: '', message: '', secret_pin: '' });
+
+  const load = () => axios.get(API).then(res => setEntries(res.data));
+  useEffect(() => { load(); }, []);
+
+  const submit = async (e) => {
+    e.preventDefault();
+    await axios.post(API, form);
+    setForm({ name: '', message: '', secret_pin: '' });
+    load();
+  };
+
+  const remove = async (id) => {
+    const pin = prompt("Enter PIN to delete:");
+    try {
+      await axios.delete(`${API}/${id}?pin=${pin}`);
+      load();
+    } catch (err) { alert("Wrong PIN!"); }
+  };
 
   return (
-    <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.jsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
-  )
+    <div style={{ padding: '20px', fontFamily: 'monospace' }}>
+      <h1>Pixel Guestbook</h1>
+      <form onSubmit={submit}>
+        <input placeholder="Name" value={form.name} onChange={e => setForm({...form, name: e.target.value})} required /><br/>
+        <textarea placeholder="Message" value={form.message} onChange={e => setForm({...form, message: e.target.value})} required /><br/>
+        <input placeholder="PIN" type="password" value={form.secret_pin} onChange={e => setForm({...form, secret_pin: e.target.value})} required /><br/>
+        <button type="submit">Post</button>
+      </form>
+      <hr />
+      {entries.map(e => (
+        <div key={e.id} style={{ border: '1px solid #ccc', margin: '10px 0', padding: '10px' }}>
+          <strong>{e.name}</strong> says: {e.message}
+          <button onClick={() => remove(e.id)} style={{ marginLeft: '10px' }}>Delete</button>
+        </div>
+      ))}
+    </div>
+  );
 }
-
-export default App
+export default App;
