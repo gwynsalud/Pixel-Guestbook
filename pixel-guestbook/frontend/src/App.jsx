@@ -4,10 +4,34 @@ import axios from 'axios';
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 const API = `${API_BASE}/guestbook`;
 
-// --- Reusable Retro Styles ---
-const pixelBorder = { border: '3px solid #333', boxShadow: '4px 4px 0px #333' };
-const inputStyle = { padding: '10px', fontFamily: 'monospace', border: '2px solid #333', outline: 'none' };
-const btnStyle = { padding: '10px 15px', fontFamily: 'monospace', fontWeight: 'bold', cursor: 'pointer', border: '2px solid #333', background: '#fff' };
+// --- RPG Theme Constants ---
+const COLORS = {
+  bg: '#9bbc0f',      // Classic GameBoy Green
+  panel: '#8bac0f',   // Darker Green
+  text: '#0f380f',    // Deep Forest Green
+  accent: '#306230',  // Darkest Green
+  error: '#e64539'    // Retro Red
+};
+
+const rpgBorder = {
+  border: `4px solid ${COLORS.text}`,
+  boxShadow: `6px 6px 0px ${COLORS.accent}`,
+  backgroundColor: COLORS.panel,
+  imageRendering: 'pixelated'
+};
+
+const rpgInput = {
+  width: '100%',
+  padding: '12px',
+  fontFamily: '"Courier New", Courier, monospace',
+  fontSize: '1rem',
+  border: `3px solid ${COLORS.text}`,
+  backgroundColor: COLORS.bg,
+  color: COLORS.text,
+  boxSizing: 'border-box',
+  outline: 'none',
+  marginBottom: '10px'
+};
 
 function App() {
   const [entries, setEntries] = useState([]);
@@ -16,12 +40,10 @@ function App() {
   const [postForm, setPostForm] = useState({ name: '', message: '' });
   const [editingId, setEditingId] = useState(null);
   const [editValue, setEditValue] = useState("");
-  
-  // Replace alerts with status state
   const [status, setStatus] = useState({ msg: '', type: '' });
   const [deleteConfirm, setDeleteConfirm] = useState(null);
 
-  const load = () => axios.get(API).then(res => setEntries(res.data)).catch(() => showMsg("Failed to load wall.", "error"));
+  const load = () => axios.get(API).then(res => setEntries(res.data)).catch(() => showMsg("QUEST FAILED: DATA NOT FOUND", "error"));
   
   useEffect(() => { load(); }, []);
 
@@ -36,19 +58,19 @@ function App() {
       if (type === 'login') {
         localStorage.setItem('pixel_user', JSON.stringify(res.data));
         setUser(res.data);
-        showMsg(`Welcome back, ${res.data.username}!`);
+        showMsg(`WELCOME BACK, HERO ${res.data.username.toUpperCase()}!`);
       } else {
-        showMsg("Registration successful! Please login.");
+        showMsg("NEW HERO REGISTERED! LOG IN TO CONTINUE.");
       }
     } catch (err) { 
-      showMsg(err.response?.data?.message || "Auth Error", "error"); 
+      showMsg(err.response?.data?.message?.toUpperCase() || "AUTH ERROR", "error"); 
     }
   };
 
   const logout = () => {
     localStorage.removeItem('pixel_user');
     setUser(null);
-    showMsg("Logged out.");
+    showMsg("YOU HAVE LEFT THE PARTY.");
   };
 
   const submitPost = async (e) => {
@@ -56,112 +78,144 @@ function App() {
     try {
       await axios.post(API, { ...postForm, author_username: user.username });
       setPostForm({ name: '', message: '' });
-      showMsg("Memory posted to the wall!");
+      showMsg("MEMORY SAVED TO THE ANCIENT WALL!");
       load();
-    } catch (err) { showMsg("Could not post.", "error"); }
+    } catch (err) { showMsg("SYSTEM ERROR: UNABLE TO POST", "error"); }
   };
 
   const handleUpdate = async (id) => {
     try {
       await axios.put(`${API}/${id}?username=${user.username}`, { message: editValue });
       setEditingId(null);
-      showMsg("Message updated!");
+      showMsg("HISTORY HAS BEEN REWRITTEN!");
       load();
-    } catch (err) { showMsg("Update failed.", "error"); }
+    } catch (err) { showMsg("UNAUTHORIZED EDIT ATTEMPT", "error"); }
   };
 
   const remove = async (id) => {
     try {
       await axios.delete(`${API}/${id}?username=${user.username}`);
       setDeleteConfirm(null);
-      showMsg("Pixel deleted forever.");
+      showMsg("PIXEL DELETED FROM EXISTENCE.");
       load();
-    } catch (err) { showMsg("Delete failed.", "error"); }
+    } catch (err) { showMsg("ANCIENT PROTECTION BLOCKS DELETION", "error"); }
   };
 
   return (
-    <div style={{ padding: '40px 20px', fontFamily: 'monospace', maxWidth: '600px', margin: '0 auto', color: '#333', backgroundColor: '#f4f4f4', minHeight: '100vh' }}>
-      <h1 style={{ textAlign: 'center', fontSize: '2.5rem', marginBottom: '40px' }}>🕹️ Pixel Guestbook</h1>
+    <div style={{ 
+      backgroundColor: COLORS.bg, 
+      color: COLORS.text, 
+      minHeight: '100vh', 
+      fontFamily: '"Courier New", Courier, monospace',
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      padding: '20px'
+    }}>
+      
+      {/* RPG HEADER */}
+      <header style={{ textAlign: 'center', marginBottom: '40px' }}>
+        <h1 style={{ fontSize: '3rem', margin: '0', textTransform: 'uppercase', letterSpacing: '4px' }}>
+           🕹️ PIXEL GUESTBOOK
+        </h1>
+        <div style={{ height: '4px', background: COLORS.text, width: '100%', marginTop: '10px' }}></div>
+      </header>
 
-      {/* STATUS NOTIFICATION BAR */}
-      {status.msg && (
+      {/* RPG STATUS BAR (Replaces Alerts) */}
+      <div style={{ 
+        width: '100%', 
+        maxWidth: '800px', 
+        height: '50px', 
+        marginBottom: '20px',
+        visibility: status.msg ? 'visible' : 'hidden'
+      }}>
         <div style={{ 
-          ...pixelBorder, 
+          ...rpgBorder, 
           padding: '10px', 
-          marginBottom: '20px', 
           textAlign: 'center',
-          backgroundColor: status.type === 'error' ? '#ff6b6b' : '#51cf66',
-          color: 'white'
+          backgroundColor: status.type === 'error' ? COLORS.error : COLORS.accent,
+          color: '#fff',
+          fontWeight: 'bold'
         }}>
           {status.msg}
         </div>
-      )}
-
-      {!user ? (
-        <div style={{ ...pixelBorder, padding: '20px', background: '#fff' }}>
-          <h3 style={{ marginTop: 0 }}>Join the Wall</h3>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-            <input placeholder="Username" style={inputStyle} onChange={e => setAuthForm({...authForm, username: e.target.value})} />
-            <input placeholder="Password" type="password" style={inputStyle} onChange={e => setAuthForm({...authForm, password: e.target.value})} />
-            <div style={{ display: 'flex', gap: '10px' }}>
-              <button style={{ ...btnStyle, flex: 1 }} onClick={() => handleAuth('login')}>Login</button>
-              <button style={{ ...btnStyle, flex: 1, backgroundColor: '#eee' }} onClick={() => handleAuth('register')}>Register</button>
-            </div>
-          </div>
-        </div>
-      ) : (
-        <div style={{ ...pixelBorder, padding: '20px', background: '#fff' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
-            <span>Hello, <strong>{user.username}</strong></span>
-            <button onClick={logout} style={{ ...btnStyle, padding: '4px 8px', fontSize: '10px' }}>LOGOUT</button>
-          </div>
-          <form onSubmit={submitPost} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-            <input placeholder="Display Name" style={inputStyle} value={postForm.name} onChange={e => setPostForm({...postForm, name: e.target.value})} required />
-            <textarea placeholder="Write something pixelated..." style={{ ...inputStyle, height: '80px', resize: 'none' }} value={postForm.message} onChange={e => setPostForm({...postForm, message: e.target.value})} required />
-            <button type="submit" style={{ ...btnStyle, background: '#333', color: '#fff' }}>POST TO WALL</button>
-          </form>
-        </div>
-      )}
-
-      <div style={{ marginTop: '40px' }}>
-        {entries.map(e => (
-          <div key={e.id} style={{ ...pixelBorder, margin: '20px 0', padding: '20px', background: '#fff', position: 'relative' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '2px solid #eee', marginBottom: '10px', paddingBottom: '5px' }}>
-              <strong>{e.name}</strong>
-              <span style={{ fontSize: '10px', color: '#888' }}>@{e.author_username}</span>
-            </div>
-            
-            {editingId === e.id ? (
-              <div>
-                <textarea style={{ ...inputStyle, width: '100%', boxSizing: 'border-box' }} value={editValue} onChange={e => setEditValue(e.target.value)} />
-                <div style={{ marginTop: '10px', display: 'flex', gap: '10px' }}>
-                  <button style={btnStyle} onClick={() => handleUpdate(e.id)}>Save ✅</button>
-                  <button style={btnStyle} onClick={() => setEditingId(null)}>Cancel</button>
-                </div>
-              </div>
-            ) : (
-              <>
-                <p style={{ lineHeight: '1.4', wordBreak: 'break-word' }}>{e.message}</p>
-                {user?.username === e.author_username && (
-                  <div style={{ display: 'flex', gap: '15px', marginTop: '15px' }}>
-                    <button onClick={() => { setEditingId(e.id); setEditValue(e.message); }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'blue', textDecoration: 'underline', padding: 0 }}>Edit</button>
-                    
-                    {deleteConfirm === e.id ? (
-                      <span style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-                        <span style={{ color: 'red', fontWeight: 'bold' }}>Sure?</span>
-                        <button onClick={() => remove(e.id)} style={{ color: 'red', background: 'none', border: '1px solid red', cursor: 'pointer' }}>Yes</button>
-                        <button onClick={() => setDeleteConfirm(null)} style={{ background: 'none', border: '1px solid #333', cursor: 'pointer' }}>No</button>
-                      </span>
-                    ) : (
-                      <button onClick={() => setDeleteConfirm(e.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'red', textDecoration: 'underline', padding: 0 }}>Delete</button>
-                    )}
-                  </div>
-                )}
-              </>
-            )}
-          </div>
-        ))}
       </div>
+
+      <main style={{ width: '100%', maxWidth: '800px' }}>
+        
+        {/* AUTH / POST PANEL */}
+        <section style={{ ...rpgBorder, padding: '30px', marginBottom: '40px' }}>
+          {!user ? (
+            <>
+              <h2 style={{ marginTop: 0 }}>[ NEW PLAYER SIGN-IN ]</h2>
+              <input placeholder="USERNAME" style={rpgInput} onChange={e => setAuthForm({...authForm, username: e.target.value})} />
+              <input placeholder="PASSWORD" type="password" style={rpgInput} onChange={e => setAuthForm({...authForm, password: e.target.value})} />
+              <div style={{ display: 'flex', gap: '20px' }}>
+                <button style={{ ...rpgInput, cursor: 'pointer', flex: 1, fontWeight: 'bold' }} onClick={() => handleAuth('login')}>LOG IN</button>
+                <button style={{ ...rpgInput, cursor: 'pointer', flex: 1, fontWeight: 'bold', backgroundColor: COLORS.accent, color: '#fff' }} onClick={() => handleAuth('register')}>REGISTER</button>
+              </div>
+            </>
+          ) : (
+            <>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '20px' }}>
+                <span>HERO: <strong>{user.username.toUpperCase()}</strong></span>
+                <button onClick={logout} style={{ ...rpgBorder, padding: '4px 10px', cursor: 'pointer', fontSize: '0.8rem' }}>EXIT GAME</button>
+              </div>
+              <form onSubmit={submitPost}>
+                <input placeholder="DISPLAY NAME" style={rpgInput} value={postForm.name} onChange={e => setPostForm({...postForm, name: e.target.value})} required />
+                <textarea placeholder="LEAVE YOUR MARK ON THE WORLD..." style={{ ...rpgInput, height: '120px', resize: 'none' }} value={postForm.message} onChange={e => setPostForm({...postForm, message: e.target.value})} required />
+                <button type="submit" style={{ ...rpgInput, cursor: 'pointer', backgroundColor: COLORS.text, color: COLORS.bg, fontWeight: 'bold' }}>WRITE TO THE ANCIENT WALL</button>
+              </form>
+            </>
+          )}
+        </section>
+
+        {/* GUESTBOOK ENTRIES */}
+        <section style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '30px' }}>
+          {entries.map(e => (
+            <div key={e.id} style={{ ...rpgBorder, padding: '25px', position: 'relative' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: `2px dashed ${COLORS.accent}`, paddingBottom: '10px', marginBottom: '15px' }}>
+                <span style={{ fontWeight: 'bold' }}>{e.name.toUpperCase()}</span>
+                <span style={{ fontSize: '0.7rem' }}>LEVEL: {e.author_username.toUpperCase()}</span>
+              </div>
+              
+              {editingId === e.id ? (
+                <div>
+                  <textarea style={{ ...rpgInput, height: '100px' }} value={editValue} onChange={e => setEditValue(e.target.value)} />
+                  <div style={{ display: 'flex', gap: '15px' }}>
+                    <button style={{ ...rpgBorder, padding: '5px 15px', cursor: 'pointer' }} onClick={() => handleUpdate(e.id)}>SAVE</button>
+                    <button style={{ ...rpgBorder, padding: '5px 15px', cursor: 'pointer' }} onClick={() => setEditingId(null)}>CANCEL</button>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <p style={{ fontSize: '1.2rem', margin: '20px 0', lineHeight: '1.6' }}>"{e.message}"</p>
+                  
+                  {user?.username === e.author_username && (
+                    <div style={{ display: 'flex', gap: '20px', marginTop: '20px' }}>
+                      <button onClick={() => { setEditingId(e.id); setEditValue(e.message); }} style={{ color: COLORS.accent, fontWeight: 'bold', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline' }}>[ EDIT ]</button>
+                      
+                      {deleteConfirm === e.id ? (
+                        <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                          <span style={{ color: COLORS.error, fontWeight: 'bold' }}>FORGET THIS MEMORY?</span>
+                          <button onClick={() => remove(e.id)} style={{ color: COLORS.error, cursor: 'pointer', background: 'none', border: `1px solid ${COLORS.error}` }}>YES</button>
+                          <button onClick={() => setDeleteConfirm(null)} style={{ cursor: 'pointer', background: 'none', border: `1px solid ${COLORS.text}` }}>NO</button>
+                        </div>
+                      ) : (
+                        <button onClick={() => setDeleteConfirm(e.id)} style={{ color: COLORS.error, fontWeight: 'bold', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline' }}>[ DELETE ]</button>
+                      )}
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          ))}
+        </section>
+      </main>
+
+      <footer style={{ marginTop: '60px', paddingBottom: '40px', fontSize: '0.8rem', opacity: 0.7 }}>
+        PRESS START TO CONTINUE | PIXEL-GUESTBOOK v2.0
+      </footer>
     </div>
   );
 }
