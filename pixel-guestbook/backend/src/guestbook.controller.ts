@@ -6,22 +6,24 @@ export class GuestbookController {
   constructor(private readonly guestbookService: GuestbookService) {}
 
   @Get()
-  getAll() {
-    return this.guestbookService.findAll();
-  }
+  getAll() { return this.guestbookService.findAll(); }
+
+  @Post('register')
+  register(@Body() body: any) { return this.guestbookService.register(body); }
+
+  @Post('login')
+  login(@Body() body: any) { return this.guestbookService.login(body); }
 
   @Post()
-  createEntry(@Body() body: any) {
-    return this.guestbookService.create(body);
-  }
+  create(@Body() body: any) { return this.guestbookService.create(body); }
 
   @Put(':id')
-  updateEntry(@Param('id') id: string, @Query('pin') pin: string, @Body() body: any) {
-    return this.guestbookService.update(id, pin, body);
+  update(@Param('id') id: string, @Query('username') username: string, @Body() body: any) { 
+    return this.guestbookService.update(id, username, body); 
   }
 
   @Delete(':id')
-  deleteEntry(@Param('id') id: string, @Query('pin') pin: string) {
-    return this.guestbookService.delete(id, pin);
+  delete(@Param('id') id: string, @Query('username') username: string) { 
+    return this.guestbookService.delete(id, username); 
   }
 }
