@@ -1,6 +1,6 @@
 import { Injectable, OnModuleInit, UnauthorizedException, ConflictException } from '@nestjs/common';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
-import * as bcrypt from 'bcryptjs'; // Changed to bcryptjs for Vercel stability
+import * as bcrypt from 'bcryptjs';
 
 @Injectable()
 export class GuestbookService implements OnModuleInit {
@@ -14,17 +14,14 @@ export class GuestbookService implements OnModuleInit {
   }
 
   // --- AUTHENTICATION ---
-
   async register(dto: any) {
     const hashedPassword = await bcrypt.hash(dto.password, 10);
-    
     const { error } = await this.supabase
       .from('profiles')
       .insert([{ username: dto.username, password: hashedPassword }]);
 
     if (error?.code === '23505') throw new ConflictException('Username already exists');
     if (error) throw new Error(error.message);
-    
     return { success: true };
   }
 
@@ -44,7 +41,6 @@ export class GuestbookService implements OnModuleInit {
   }
 
   // --- GUESTBOOK CRUD ---
-
   async findAll() {
     const { data } = await this.supabase
       .from('guestbook')
@@ -54,10 +50,15 @@ export class GuestbookService implements OnModuleInit {
   }
 
   async create(dto: any) {
-    // Expected DTO: { name, message, author_username }
+    // Ensuring category defaults to 'freedom' if the frontend misses it
+    const newEntry = {
+      ...dto,
+      category: dto.category || 'freedom'
+    };
+
     const { data, error } = await this.supabase
       .from('guestbook')
-      .insert([dto]);
+      .insert([newEntry]);
     
     if (error) throw new Error(error.message);
     return data;
