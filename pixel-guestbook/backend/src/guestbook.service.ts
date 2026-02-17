@@ -1,11 +1,10 @@
 import { Injectable, OnModuleInit, UnauthorizedException, ConflictException } from '@nestjs/common';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
-import * as bcrypt from 'bcrypt';
+import * as bcrypt from 'bcryptjs'; // Changed to bcryptjs for Vercel stability
 
 @Injectable()
 export class GuestbookService implements OnModuleInit {
   private supabase: SupabaseClient;
-  private readonly saltRounds = 10; // The complexity of the hash
 
   onModuleInit() {
     this.supabase = createClient(
@@ -14,7 +13,38 @@ export class GuestbookService implements OnModuleInit {
     );
   }
 
-  // GET: Fetch all entries
+  // --- AUTHENTICATION ---
+
+  async register(dto: any) {
+    const hashedPassword = await bcrypt.hash(dto.password, 10);
+    
+    const { error } = await this.supabase
+      .from('profiles')
+      .insert([{ username: dto.username, password: hashedPassword }]);
+
+    if (error?.code === '23505') throw new ConflictException('Username already exists');
+    if (error) throw new Error(error.message);
+    
+    return { success: true };
+  }
+
+  async login(dto: any) {
+    const { data: user, error } = await this.supabase
+      .from('profiles')
+      .select('*')
+      .eq('username', dto.username)
+      .single();
+
+    if (error || !user) throw new UnauthorizedException('Invalid username or password');
+
+    const isMatch = await bcrypt.compare(dto.password, user.password);
+    if (!isMatch) throw new UnauthorizedException('Invalid username or password');
+
+    return { username: user.username };
+  }
+
+  // --- GUESTBOOK CRUD ---
+
   async findAll() {
     const { data } = await this.supabase
       .from('guestbook')
@@ -24,39 +54,32 @@ export class GuestbookService implements OnModuleInit {
   }
 
   async create(dto: any) {
-    // Expects { name, message, author_username }
-    return await this.supabase.from('guestbook').insert([dto]);
+    // Expected DTO: { name, message, author_username }
+    const { data, error } = await this.supabase
+      .from('guestbook')
+      .insert([dto]);
+    
+    if (error) throw new Error(error.message);
+    return data;
   }
 
-  // PUT: Update message only if PIN matches
-  async update(id: string, pin: string, dto: any) {
-    const { data: entry } = await this.supabase
-      .from('guestbook')
-      .select('secret_pin')
-      .eq('id', id)
-      .single();
-
-    if (!entry || entry.secret_pin !== pin) {
-      throw new UnauthorizedException('Invalid PIN - Update denied');
-    }
-
-    return await this.supabase
+  async update(id: string, username: string, dto: any) {
+    const { data, error } = await this.supabase
       .from('guestbook')
       .update({ message: dto.message })
-      .eq('id', id);
+      .match({ id: id, author_username: username });
+
+    if (error) throw new UnauthorizedException('You do not have permission to edit this');
+    return data;
   }
 
-  // DELETE: Remove entry only if PIN matches
-  async delete(id: string, pin: string) {
-    const { data: entry } = await this.supabase
+  async delete(id: string, username: string) {
+    const { error } = await this.supabase
       .from('guestbook')
       .delete()
       .match({ id: id, author_username: username });
 
-    if (!entry || entry.secret_pin !== pin) {
-      throw new UnauthorizedException('Invalid PIN - Delete denied');
-    }
-
-    return await this.supabase.from('guestbook').delete().eq('id', id);
+    if (error) throw new UnauthorizedException('You do not have permission to delete this');
+    return { success: true };
   }
 }
