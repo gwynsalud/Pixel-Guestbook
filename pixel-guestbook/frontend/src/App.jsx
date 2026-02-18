@@ -106,7 +106,7 @@ function App() {
 
       {/* HEADER */}
       <div style={{ textAlign: 'center', marginBottom: '30px' }}>
-        <h1 style={{ color: THEME.quest, fontSize: '3rem', margin: 0, textShadow: '4px 4px #000' }}>PIXEL CARD REALM</h1>
+        <h1 style={{ color: THEME.quest, fontSize: '3rem', margin: 0, textShadow: '4px 4px #000' }}>ADVENTURER'S GUILD LOGBOOK</h1>
         <div style={{ display: 'flex', justifyContent: 'center', gap: '10px', marginTop: '20px' }}>
           {['all', 'freedom', 'quest', 'oracle'].map(cat => (
             <button key={cat} onClick={() => setFilter(cat)} style={{

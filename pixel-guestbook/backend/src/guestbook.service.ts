@@ -50,7 +50,6 @@ export class GuestbookService implements OnModuleInit {
   }
 
   async create(dto: any) {
-    // Ensuring category defaults to 'freedom' if the frontend misses it
     const newEntry = {
       ...dto,
       category: dto.category || 'freedom'
